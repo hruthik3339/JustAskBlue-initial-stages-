@@ -1,0 +1,226 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Method</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 20px auto;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .header button {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .header h2 {
+            flex: 1;
+            margin: 0;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .amount {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .payment-section {
+            padding: 15px;
+        }
+
+        .payment-section h3 {
+            margin: 10px 0;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .payment-option {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            cursor: pointer;
+        }
+
+        .payment-option:hover {
+            background-color: #f0f0f0;
+        }
+
+        .payment-option img {
+            width: 24px;
+            height: 24px;
+            margin-right: 10px;
+        }
+
+        .payment-option span {
+            flex: 1;
+        }
+
+        .payment-option::after {
+            content: '>';
+            color: #666;
+        }
+
+        .confirmation-message {
+            display: none;
+            padding: 20px;
+            text-align: center;
+            color: green;
+        }
+
+        .confirmation-message button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color: #6a0dad;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <button onclick="goBack()">←</button>
+            <h2>Select payment method</h2>
+            <span class="amount" id="amountToPay">Amount to pay: ₹0</span>
+        </div>
+
+        <!-- Payment Options -->
+        <div class="payment-section" id="paymentOptions">
+            <h3>Cards</h3>
+            <div class="payment-option" onclick="selectPayment('Cards')">
+                <img src="https://via.placeholder.com/24?text=Card" alt="Card Icon">
+                <span>Add new card</span>
+            </div>
+
+            <h3>UPI</h3>
+            <div class="payment-option" onclick="selectPayment('UPI')">
+                <img src="https://via.placeholder.com/24?text=UPI" alt="UPI Icon">
+                <span>Add a new UPI ID</span>
+            </div>
+
+            <h3>Netbanking</h3>
+            <div class="payment-option" onclick="selectPayment('Netbanking')">
+                <img src="https://via.placeholder.com/24?text=Bank" alt="Netbanking Icon">
+                <span>Netbanking</span>
+            </div>
+
+            <h3>Pay after service</h3>
+            <div class="payment-option" onclick="selectPayment('Pay online after service')">
+                <img src="https://via.placeholder.com/24?text=Online" alt="Online Icon">
+                <span>Pay online after service</span>
+            </div>
+            <div class="payment-option" onclick="selectPayment('Pay with cash after service')">
+                <img src="https://via.placeholder.com/24?text=Cash" alt="Cash Icon">
+                <span>Pay with cash after service</span>
+            </div>
+        </div>
+
+        <!-- Confirmation Message -->
+        <div class="confirmation-message" id="confirmationMessage">
+            <p>Payment method selected successfully!</p>
+            <p id="selectedMethod"></p>
+            <button onclick="goBack()">Return to Checkout</button>
+        </div>
+    </div>
+
+    <script>
+        // Get the amount from the URL query parameter
+        function getAmountFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            const amount = params.get('amount') || '₹0';
+            document.getElementById('amountToPay').textContent = `Amount to pay: ${amount}`;
+        }
+
+        // Simulate selecting a payment method
+        function selectPayment(method) {
+            // In a real app, this would integrate with a payment gateway
+            const paymentOptions = document.getElementById('paymentOptions');
+            const confirmationMessage = document.getElementById('confirmationMessage');
+            const selectedMethod = document.getElementById('selectedMethod');
+
+            // Hide payment options and show confirmation
+            paymentOptions.style.display = 'none';
+            confirmationMessage.style.display = 'block';
+            selectedMethod.textContent = `Selected Method: ${method}`;
+
+            // Store the selected payment method in localStorage (to simulate persistence)
+            localStorage.setItem('selectedPaymentMethod', method);
+        }
+
+        // Go back to the checkout page
+        function goBack() {
+            window.location.href = 'index.html';
+        }
+
+        // Load the amount on page load
+        window.onload = getAmountFromURL;
+    </script>
+</body>
+</html>

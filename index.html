@@ -1,0 +1,756 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Responsive Final Version - Urban Company</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js" defer></script>
+<style>
+    /* Reset & basics */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      line-height: 1.5;
+      background-color: #EBF5EE;
+      color: #283044;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden; /* Prevent scrolling while loading */
+    }
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+
+    :root {
+      --mint-cream: #EBF5EE;
+      --space-cadet: #283044;
+      --air-blue: #78A1BB;
+      --khaki: #BFA89E;
+      --cinereous: #8B786D;
+      --white: #FFFFFF;
+    }
+
+    /* Loader styling */
+    .loader-wrapper {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: var(--space-cadet);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      opacity: 1;
+      transition: opacity 0.5s ease; /* Fade-out transition */
+    }
+    .loader {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .loader-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .loader-logo h1 {
+      font-size: 2.5rem;
+      color: var(--mint-cream);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .loader-logo h1 .blue {
+      color: var(--air-blue);
+      animation: pulse 1.5s infinite ease-in-out;
+    }
+    .loader-logo h1 .gear {
+      font-size: 3rem;
+      animation: spin 2s linear infinite;
+    }
+    .loader-logo p {
+      font-size: 1.2rem;
+      color: var(--khaki);
+      margin: 5px 0 0;
+      text-align: center;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.7; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .loader-wrapper.hidden {
+      opacity: 0;
+      pointer-events: none; /* Prevent interaction after fade-out */
+    }
+
+    /* Main content hidden initially */
+    #main-content {
+      opacity: 0;
+      transition: opacity 0.5s ease; /* Fade-in transition */
+    }
+    #main-content.loaded {
+      opacity: 1;
+    }
+
+    /* Header & Navbar container */
+    .nav-wrapper > .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      background-color: var(--space-cadet);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      gap: 1rem;
+    }
+
+    /* Profile button left */
+    .header-action-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 26px;
+      color: var(--mint-cream);
+      display: flex;
+      align-items: center;
+      padding: 5px;
+      transition: color 0.3s ease;
+    }
+    .header-action-btn:hover {
+      color: var(--khaki);
+    }
+
+    /* Badge style */
+    .btn-badge {
+      position: absolute;
+      top: -6px;
+      right: -10px;
+      background: var(--khaki);
+      color: var(--space-cadet);
+      font-size: 12px;
+      padding: 2px 7px;
+      border-radius: 50%;
+      font-weight: 700;
+      line-height: 1;
+      user-select: none;
+    }
+
+    /* Side panels */
+    .side-panel {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      width: 300px;
+      background: var(--mint-cream);
+      box-shadow: 2px 0 10px rgba(40,48,68,0.3);
+      padding: 20px;
+      overflow-y: auto;
+      transition: transform 0.3s ease;
+      z-index: 1050;
+      color: var(--space-cadet);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      font-size: 16px;
+    }
+
+    .profile-panel {
+      left: 0;
+      transform: translateX(-100%);
+      border-right: 1px solid #ccc;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .cart-panel {
+      right: 0;
+      transform: translateX(100%);
+      border-left: 1px solid #ccc;
+      border-radius: 8px 0 0 8px;
+    }
+
+    .side-panel.active {
+      transform: translateX(0);
+    }
+
+    /* Hero Section */
+    .hero {
+      background: linear-gradient(135deg, var(--space-cadet), var(--air-blue));
+      color: var(--mint-cream);
+      height: 90vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 0 20px;
+    }
+
+    .hero-content h1 {
+      font-size: 3rem;
+      margin: 0 0 10px;
+    }
+
+    .hero-content p {
+      font-size: 1.2rem;
+      margin: 0 0 20px;
+    }
+
+    .cta-btn {
+      background: var(--khaki);
+      color: var(--space-cadet);
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-weight: 500;
+      transition: background 0.3s ease;
+    }
+    .cta-btn:hover {
+      background: var(--cinereous);
+      color: var(--white);
+      text-decoration: none;
+    }
+
+    /* Service Section */
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .category-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 30px;
+    }
+
+    .category-buttons button {
+      background: var(--khaki);
+      color: var(--space-cadet);
+      border: none;
+      padding: 10px 16px;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: background 0.3s ease;
+    }
+
+    .category-buttons button:hover {
+      background: var(--cinereous);
+      color: var(--white);
+    }
+
+    .service-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      padding-bottom: 20px;
+    }
+
+    .service-card {
+      background: var(--cinereous);
+      color: var(--white);
+      border-radius: 8px;
+      padding: 16px;
+      width: calc(33.333% - 20px);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      transition: transform 0.2s ease;
+      text-align: center;
+    }
+
+    .service-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    /* Footer styling */
+    .footer {
+      background-color: var(--space-cadet);
+      padding: 40px 20px;
+      color: var(--mint-cream);
+      margin-top: auto;
+    }
+
+    .footer-content {
+      max-width: 1200px;
+      margin: auto;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 2rem;
+    }
+
+    .footer-columns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 40px;
+      flex: 1;
+      min-width: 280px;
+    }
+
+    .footer-column {
+      min-width: 140px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .footer-column h3 {
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+
+    .footer-column a {
+      font-size: 14px;
+      color: var(--mint-cream);
+    }
+
+    .social-icons {
+      display: flex;
+      gap: 10px;
+      margin-top: 5px;
+    }
+
+    .social-icons img {
+      width: 24px;
+      height: 24px;
+    }
+
+    .footer-bottom {
+      border-top: 1px solid #ccc;
+      padding-top: 15px;
+      font-size: 14px;
+      max-width: 1200px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    /* Back to top button */
+    #back-top-btn {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      background-color: var(--space-cadet);
+      color: var(--mint-cream);
+      border: none;
+      padding: 12px 15px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: none;
+      font-size: 22px;
+      z-index: 1200;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      transition: background-color 0.3s ease;
+    }
+
+    #back-top-btn:hover {
+      background-color: var(--khaki);
+      color: var(--space-cadet);
+    }
+
+    #back-top-btn.active {
+      display: block;
+    }
+
+    /* Responsive Styling */
+    @media (max-width: 992px) {
+      .responsive-logo {
+        height: 8rem;
+      }
+      .service-card {
+        width: calc(50% - 20px);
+      }
+      .nav-wrapper > .container {
+        padding: 10px 20px;
+      }
+      .header-action-btn {
+        font-size: 24px;
+      }
+      .search-wrapper {
+        max-width: 320px;
+      }
+      .side-panel {
+        width: 280px;
+      }
+      .footer-columns {
+        flex-wrap: nowrap;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .responsive-logo {
+        height: 6rem;
+      }
+      .service-card {
+        width: 100%;
+      }
+      .nav-wrapper > .container {
+        padding: 8px 15px;
+        gap: 0.7rem;
+      }
+      .header-action-btn {
+        font-size: 22px;
+      }
+      .search-wrapper {
+        max-width: none;
+        flex-grow: 1;
+        margin: 0 5px;
+      }
+      .side-panel {
+        width: 260px;
+      }
+      .footer-content {
+        flex-direction: column;
+        gap: 30px;
+      }
+      .footer-columns {
+        flex-direction: column;
+        gap: 20px;
+      }
+      .hero-content h1 {
+        font-size: 2rem;
+      }
+      .hero-content p {
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Loader -->
+  <div class="loader-wrapper" id="loader">
+    <div class="loader">
+      <div class="loader-logo">
+        <h1>
+          <span>JUST ASK</span>
+          <span class="blue">BLUE</span>
+          <span class="gear">⚙️</span>
+        </h1>
+      </div>
+      <p>Empowering Your Needs</p>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div id="main-content">
+    <!-- Header with profile, search, cart -->
+    <header class="nav-wrapper">
+      <div class="container">
+        <button class="header-action-btn" aria-label="Open profile" data-panel-btn="profile">
+          <ion-icon name="person-circle-outline"></ion-icon>
+        </button>
+        <button class="header-action-btn cart-btn" aria-label="Open shopping cart" data-panel-btn="cart">
+          <ion-icon name="basket-outline"></ion-icon>
+          <data class="btn-badge" value="2">02</data>
+        </button>
+      </div>
+    </header>
+
+    <!-- Side panels -->
+    <aside class="side-panel profile-panel" data-side-panel="profile" aria-label="Profile Panel" role="region" aria-hidden="true" tabindex="-1">
+      <h2>Customer Profile</h2>
+      <p><strong>Name:</strong> Jane Doe</p>
+      <p><strong>Email:</strong> jane.doe@example.com</p>
+      <p><strong>Membership:</strong> Premium Member</p>
+      <button data-panel-btn="profile" aria-label="Close profile panel" style="margin-top:20px; padding: 8px 12px; cursor:pointer;">Close</button>
+    </aside>
+
+    <aside class="side-panel cart-panel" data-side-panel="cart" aria-label="Shopping Cart" role="region" aria-hidden="true" tabindex="-1">
+      <h2>Your Cart</h2>
+      <ul style="list-style:none; padding-left:0;">
+        <li>Service 1 - $50</li>
+        <li>Service 2 - $80</li>
+        <li>Service 3 - $30</li>
+      </ul>
+      <button data-panel-btn="cart" aria-label="Close cart panel" style="margin-top:20px; padding: 8px 12px; cursor:pointer;">Close</button>
+    </aside>
+
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+      <div class="hero-content">
+        <h1>Welcome to Urban Company</h1>
+        <p>Your one-stop solution for all home services.</p>
+        <a href="#services" class="cta-btn">Explore Services</a>
+      </div>
+    </section>
+
+    <!-- Services Section -->
+    <section id="services">
+      <h1>All Services</h1>
+      <div class="category-buttons">
+        <button data-category="all">All</button>
+        <button data-category="beauty">Beauty & Wellness</button>
+        <button data-category="cleaning">Home Cleaning</button>
+        <button data-category="repairs">Home Repairs & Maintenance</button>
+        <button data-category="pest">Pest Control</button>
+        <button data-category="furniture">Furniture & Upholstery</button>
+        <button data-category="appliances">Appliances Services</button>
+        - Services</button>
+        <button data-category="housekeeping">Housekeeping Services</button>
+        <button data-category="others">Others</button>
+      </div>
+
+      <div class="service-list">
+        <!-- Beauty & Wellness -->
+        <div class="service-card" data-category="beauty">Women's Haircut & Styling</div>
+        <div class="service-card" data-category="beauty">Women's Waxing</div>
+        <div class="service-card" data-category="beauty">Women's Facials</div>
+        <div class="service-card" data-category="beauty">Women's Manicure & Pedicure</div>
+        <div class="service-card" data-category="beauty">Eyelash Extensions</div>
+        <div class="service-card" data-category="beauty">Nail Extensions</div>
+        <div class="service-card" data-category="beauty">Threading & Eyebrow Services</div>
+        <div class="service-card" data-category="beauty">Bridal Makeup & Pre-bridal Packages</div>
+        <div class="service-card" data-category="beauty">Men's Haircut & Styling</div>
+        <div class="service-card" data-category="beauty">Men's Beard Grooming</div>
+        <div class="service-card" data-category="beauty">Men's Manicure & Pedicure</div>
+        <div class="service-card" data-category="beauty">Men's Facials & Skin Care</div>
+        <div class="service-card" data-category="beauty">Massage Therapy (Male Professionals)</div>
+        <div class="service-card" data-category="beauty">Massage Therapy (Female Professionals)</div>
+
+        <!-- Home Cleaning -->
+        <div class="service-card" data-category="cleaning">Full Home Deep Cleaning</div>
+        <div class="service-card" data-category="cleaning">Kitchen Deep Cleaning</div>
+        <div class="service-card" data-category="cleaning">Bathroom Deep Cleaning</div>
+        <div class="service-card" data-category="cleaning">Sofa Cleaning</div>
+        <div class="service-card" data-category="cleaning">Carpet Cleaning</div>
+        <div class="service-card" data-category="cleaning">Mattress Cleaning</div>
+        <div class="service-card" data-category="cleaning">Balcony/Window Cleaning</div>
+
+        <!-- Home Repairs -->
+        <div class="service-card" data-category="repairs">Plumbing Services</div>
+        <div class="service-card" data-category="repairs">Electrical Services</div>
+        <div class="service-card" data-category="repairs">Carpentry Services</div>
+        <div class="service-card" data-category="repairs">Wall Painting</div>
+        <div class="service-card" data-category="repairs">TV/Display Mounting</div>
+        <div class="service-card" data-category="repairs">Drilling and Hanging</div>
+        <div class="service-card" data-category="repairs">Curtain Rod Installation</div>
+
+        <!-- Pest Control -->
+        <div class="service-card" data-category="pest">General Pest Control</div>
+        <div class="service-card" data-category="pest">Cockroach Control</div>
+        <div class="service-card" data-category="pest">Bed Bug Treatment</div>
+        <div class="service-card" data-category="pest">Termite Control</div>
+        <div class="service-card" data-category="pest">Rodent Control</div>
+
+        <!-- Furniture & Upholstery -->
+        <div class="service-card" data-category="furniture">Sofa Shampooing & Cleaning</div>
+        <div class="service-card" data-category="furniture">Chair & Cushion Cleaning</div>
+        <div class="service-card" data-category="furniture">Mattress Deep Cleaning</div>
+        <div class="service-card" data-category="furniture">Curtain Cleaning</div>
+
+        <!-- Appliances Services -->
+        <div class="service-card" data-category="appliances">AC Servicing (Foam Jet / Power Jet)</div>
+        <div class="service-card" data-category="appliances">Split AC Repairs</div>
+        <div class="service-card" data-category="appliances">Window AC Repairs</div>
+        <div class="service-card" data-category="appliances">AC PCB Repairs</div>
+        <div class="service-card" data-category="appliances">AC Installation</div>
+        <div class="service-card" data-category="appliances">AC Uninstallation</div>
+        <div class="service-card" data-category="appliances">Washing Machine Repair</div>
+        <div class="service-card" data-category="appliances">Refrigerator Repair</div>
+        <div class="service-card" data-category="appliances">Microwave Oven Repair</div>
+        <div class="service-card" data-category="appliances">Water Purifier (RO/UV) Repair</div>
+        <div class="service-card" data-category="appliances">Chimney & Hob Cleaning/Repair</div>
+        <div class="service-card" data-category="appliances">Geyser Repair</div>
+        <div class="service-card" data-category="appliances">TV Repair</div>
+
+        <!-- Housekeeping -->
+        <div class="service-card" data-category="housekeeping">Insta Maids (Hourly Househelp)</div>
+        <div class="service-card" data-category="housekeeping">Daily House Cleaning</div>
+        <div class="service-card" data-category="housekeeping">Cook Services</div>
+
+        <!-- Others -->
+        <div class="service-card" data-category="others">Car Cleaning (Interior/Exterior)</div>
+        <div class="service-card" data-category="others">Gardening Services</div>
+        <div class="service-card" data-category="others">Home Sanitization</div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-content">
+        <div class="responsive-logo">
+          <img src="FINALLOGO - Copy.jpg" style="height: 11rem;" alt="Urban Company Logo">
+        </div>
+        <div class="footer-columns">
+          <div class="footer-column">
+            <h3>Company</h3>
+            <a href="#">About us</a>
+            <a href="#">Terms & conditions</a>
+            <a href="#">Privacy policy</a>
+          </div>
+          <div class="footer-column">
+            <h3>For customers</h3>
+            <a href="#">UC reviews</a>
+            <a href="#">Categories near you</a>
+            <a href="#">Contact us</a>
+          </div>
+          <div class="footer-column">
+            <h3>For professionals</h3>
+            <a href="#">Register as a professional</a>
+          </div>
+          <div class="footer-column">
+            <h3>Social links</h3>
+            <div class="social-icons">
+              <a href="#"><img src="https://img.icons8.com/ios-filled/24/twitter.png" alt="Twitter"/></a>
+              <a href="#"><img src="https://img.icons8.com/ios-filled/24/facebook.png" alt="Facebook"/></a>
+              <a href="#"><img src="https://img.icons8.com/ios-filled/24/instagram-new.png" alt="Instagram"/></a>
+              <a href="#"><img src="https://img.icons8.com/ios-filled/24/linkedin.png" alt="LinkedIn"/></a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2025 Urban Company. All rights reserved.</p>
+        <p>Note: Team is actively working on enhancing your experience.</p>
+      </div>
+    </footer>
+
+    <!-- Back to Top Button -->
+    <button id="back-top-btn" aria-label="Back to top">
+      <ion-icon name="arrow-up-outline"></ion-icon>
+    </button>
+  </div>
+
+  <script>
+    // Wait for DOM to load
+    document.addEventListener('DOMContentLoaded', () => {
+      try {
+        // Preloader logic
+        const loader = document.querySelector('#loader');
+        const mainContent = document.querySelector('#main-content');
+
+        window.addEventListener('load', () => {
+          loader.classList.add('hidden'); // Fade out loader
+          mainContent.classList.add('loaded'); // Fade in main content
+          document.body.style.overflow = 'auto'; // Re-enable scrolling
+        });
+
+        // Toggle profile & cart panels
+        const panelButtons = document.querySelectorAll('[data-panel-btn]');
+        const sidePanels = document.querySelectorAll('[data-side-panel]');
+
+        if (!panelButtons.length || !sidePanels.length) {
+          console.error('Panel buttons or side panels not found');
+          return;
+        }
+
+        panelButtons.forEach(btn => {
+          btn.addEventListener('click', () => {
+            const panelName = btn.dataset.panelBtn;
+            sidePanels.forEach(panel => {
+              if (panel.dataset.sidePanel === panelName) {
+                const isActive = panel.classList.toggle('active');
+                panel.setAttribute('aria-hidden', !isActive);
+                if (isActive) panel.focus();
+              } else {
+                panel.classList.remove('active');
+                panel.setAttribute('aria-hidden', 'true');
+              }
+            });
+            if (panelName !== 'search' && searchWrapper.classList.contains('active')) {
+              searchWrapper.classList.remove('active');
+            }
+          });
+        });
+
+        // Category filtering
+        const categoryButtons = document.querySelectorAll('[data-category]');
+        const serviceCards = document.querySelectorAll('.service-card');
+
+        categoryButtons.forEach(button => {
+          button.addEventListener('click', () => {
+            const selectedCategory = button.getAttribute('data-category');
+            serviceCards.forEach(card => {
+              const cardCategory = card.getAttribute('data-category');
+              if (selectedCategory === 'all' || selectedCategory === cardCategory) {
+                card.classList.remove('hidden');
+              } else {
+                card.classList.add('hidden');
+              }
+            });
+          });
+        });
+
+        // Back to top button functionality
+        const backTopBtn = document.querySelector('#back-top-btn');
+        if (!backTopBtn) {
+          console.error('Back to top button not found');
+          return;
+        }
+        window.addEventListener('scroll', () => {
+          if (window.scrollY > 300) {
+            backTopBtn.classList.add('active');
+          } else {
+            backTopBtn.classList.remove('active');
+          }
+        });
+        backTopBtn.addEventListener('click', () => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      } catch (error) {
+        console.error('Script error:', error);
+      }
+    });
+  </script>
+</body>
+</html>

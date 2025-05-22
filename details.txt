@@ -1,0 +1,9 @@
+1.login
+2.home
+3.slot
+4.chat
+5.worker
+6.chat
+7.new service
+8.error
+9......?

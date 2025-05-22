@@ -1,0 +1,199 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>404 - Page Not Found | Just Ask Blue</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    /* Reset & basics */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      line-height: 1.5;
+      background-color: #283044; /* --space-cadet */
+      color: #EBF5EE; /* --mint-cream */
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 20px;
+    }
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* Color variables from the original site */
+    :root {
+      --mint-cream: #EBF5EE;
+      --space-cadet: #283044;
+      --khaki: #BFA89E;
+      --cinereous: #8B786D;
+      --white: #FFFFFF;
+    }
+
+    /* Logo styling */
+    .error-logo {
+      margin-bottom: 20px;
+      transition: transform 0.3s ease; /* Smooth scaling on hover */
+    }
+    .error-logo:hover {
+      transform: scale(1.05); /* Slight scale-up on hover */
+    }
+    .error-logo h1 {
+      font-size: 2.5rem;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .error-logo h1 span {
+      display: inline-block;
+    }
+    .error-logo h1 .blue {
+      color: #78A1BB; /* --air-blue for the word "BLUE" */
+    }
+    .error-logo h1 .gear {
+      font-size: 3rem;
+      line-height: 1;
+    }
+    .error-logo p {
+      font-size: 1.2rem;
+      color: #BFA89E; /* --khaki for the tagline */
+      margin: 5px 0 0;
+      font-weight: 400;
+    }
+
+    /* Error message styling */
+    .error-content {
+      opacity: 0;
+      transform: translateY(20px); /* Start slightly below */
+      animation: fadeInUp 0.8s ease forwards; /* Fade-in and slide-up animation */
+      max-width: 600px;
+    }
+    .error-content h2 {
+      font-size: 3rem;
+      margin: 0 0 10px;
+    }
+    .error-content p {
+      font-size: 1.2rem;
+      margin: 0 0 20px;
+    }
+
+    /* Call-to-action button */
+    .cta-btn {
+      background: var(--khaki);
+      color: var(--space-cadet);
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-weight: 500;
+      display: inline-block;
+      transition: background 0.3s ease, color 0.3s ease, transform 0.2s ease; /* Smooth hover transitions */
+    }
+    .cta-btn:hover {
+      background: var(--cinereous);
+      color: var(--white);
+      text-decoration: none;
+      transform: translateY(-2px); /* Slight lift on hover */
+    }
+
+    /* Fade-in animation */
+    @keyframes fadeInUp {
+      0% {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+      .error-logo h1 {
+        font-size: 2rem;
+      }
+      .error-logo h1 .gear {
+        font-size: 2.5rem;
+      }
+      .error-logo p {
+        font-size: 1rem;
+      }
+      .error-content h2 {
+        font-size: 2rem;
+      }
+      .error-content p {
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Logo Section -->
+  <div class="error-logo">
+    <h1>
+      <span>JUST ASK</span>
+      <span class="blue">BLUE</span>
+      <span class="gear">⚙️</span>
+    </h1>
+    <p>Empowering Your Needs</p>
+  </div>
+
+  <!-- Error Message Section -->
+  <div class="error-content">
+    <h2>404 - Page Not Found</h2>
+    <p>Oops! The page you're looking for doesn't exist. Let's get you back on track.</p>
+    <a href="/" class="cta-btn">Back to Home</a>
+  </div>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Loading - Just Ask Blue</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    /* Reset & basics */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background-color: #283044; /* --space-cadet */
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    /* Color variables */
+    :root {
+      --mint-cream: #EBF5EE;
+      --space-cadet: #283044;
+      --air-blue: #78A1BB;
+      --khaki: #BFA89E;
+    }
+
+    /* Loader container */
+    .loader {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      opacity: 1;
+      transition: opacity 0.5s ease; /* Fade-out transition */
+    }
+
+    /* Logo styling */
+    .loader-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .loader-logo h1 {
+      font-size: 2.5rem;
+      color: var(--mint-cream);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .loader-logo h1 .blue {
+      color: var(--air-blue); /* BLUE in air-blue */
+      animation: pulse 1.5s infinite ease-in-out; /* Pulsing effect for BLUE */
+    }
+    .loader-logo h1 .gear {
+      font-size: 3rem;
+      animation: spin 2s linear infinite; /* Spinning gear animation */
+    }
+    .loader-logo p {
+      font-size: 1.2rem;
+      color: var(--khaki);
+      margin: 5px 0 0;
+      text-align: center;
+    }
+
+    /* Animations */
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.05);
+        opacity: 0.7;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    /* Fade-out when hidden */
+    .loader.hidden {
+      opacity: 0;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+      .loader-logo h1 {
+        font-size: 2rem;
+      }
+      .loader-logo h1 .gear {
+        font-size: 2.5rem;
+      }
+      .loader-logo p {
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="loader" id="loader">
+    <div class="loader-logo">
+      <h1>
+        <span>JUST ASK</span>
+        <span class="blue">BLUE</span>
+        <span class="gear">⚙️</span>
+      </h1>
+    </div>
+    <p>Empowering Your Needs</p>
+  </div>
+</body>
+</html>
